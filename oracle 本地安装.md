@@ -113,6 +113,6 @@ export PATH=$ORACLE_HOME/bin:$PATH:$HOME/bin
 ![11](https://github.com/cnxz43/tech-doc/blob/master/pic/屏幕快照%202019-01-03%20上午10.34.37.png?raw=true) 
 ![12](https://github.com/cnxz43/tech-doc/blob/master/pic/屏幕快照%202019-01-03%20上午10.47.24.png?raw=true) 
 ![13](https://github.com/cnxz43/tech-doc/blob/master/pic/屏幕快照%202019-01-03%20上午10.48.48.png?raw=true) 
-![14](https://github.com/cnxz43/tech-doc/blob/master/pic/屏幕快照%202019-01-03%20上午10.49.01.png?raw=true) 
+![14](https://github.com/cnxz43/tech-doc/blob/master/pic/屏幕快照%202019-01-03%20上午10.49.07.png?raw=true) 
 ![14](https://github.com/cnxz43/tech-doc/blob/master/pic/屏幕快照%202019-01-03%20上午10.54.57.png?raw=true) 
 
