@@ -53,7 +53,7 @@
 
   * 客户端—服务器分离：通常由局域网来划分这两层，用户进程和服务器进程之间使用Oracle专有网络通信协议——Oracle Net
 
-    ![用户和数据库之间的间接连接](/Users/zjxu/Library/Containers/com.tencent.xinWeChat/Data/Library/Application Support/com.tencent.xinWeChat/2.0b4.0.9/49c403d66b735e8f7ceb07256fe9fdc2/Message/MessageTemp/1f3621b50ecdd468f31b0b5ec4921e18/Image/1291547108859_.pic_hd.jpg)
+    ![用户和数据库之间的间接连接](https://github.com/cnxz43/tech-doc/blob/master/assets/1.jpg)
 
   * 客户端层：用户和进程
 
@@ -711,7 +711,7 @@ cond3(no)->e
 
 在实例启动时遵循的高层次步骤：
 
-![在实例启动时遵循的高层次步骤](assets/屏幕快照 2019-01-16 上午10.22.27.png)
+![在实例启动时遵循的高层次步骤](https://github.com/cnxz43/tech-doc/blob/master/assets/4.png)
 
 
 
