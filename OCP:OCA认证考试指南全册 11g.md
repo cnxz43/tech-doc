@@ -53,7 +53,7 @@
 
   * 客户端—服务器分离：通常由局域网来划分这两层，用户进程和服务器进程之间使用Oracle专有网络通信协议——Oracle Net
 
-    ![用户和数据库之间的间接连接](https://github.com/cnxz43/tech-doc/blob/master/assets/1.jpg)
+    ![1](assets/1.png)
 
   * 客户端层：用户和进程
 
@@ -711,7 +711,7 @@ cond3(no)->e
 
 在实例启动时遵循的高层次步骤：
 
-![在实例启动时遵循的高层次步骤](https://github.com/cnxz43/tech-doc/blob/master/assets/4.png)
+![4](assets/4.png)
 
 
 
@@ -792,5 +792,511 @@ DBA经常使用的视图如下
 
 动态性能视图在数据库启动阶段创建，在指定实例的生存期内进行更新，在数据库关闭阶段被删除。
 
+### 第四章 配置Oracle网络环境
+
+本章主要介绍oracle net服务，旧称sqlnet
+
+#### 4.1 配置和管理oracle noet网络
+
+##### 4.1.1 oracle net 和 客户端-服务器范例
+
+oracle net提供了帮助启动服务器进程并代表用户进程执行代码的机制。这也被称为简历一个会话。随后，oracle net负责维护这个会话：将SQL语句从用户进程传送至服务器进程，并将结果从服务器进程取回用户进程。
+
+##### 4.1.2 Oracle Net 与通信协议简介
+
+Oracle的网络支持（几种通信方式）：
+
+- TCP
+- 带有安全套接字的TCP
+- Windows命名管道（Named Pipes, NMP）
+- Infiniband高速网络上的套接字直接协议（Sockets Direct Protocol, SDP）
+
+Oracle Net 可以使用操作系统专有的进程间通信（Inter-Process Communication，ICP）协议来进行用户进程和服务器进程位于相同计算机上的本地连接。
+
+##### 4.1.3 建立会话
+
+建立会话语句
+
+```SQLP
+CONNECT STONE/ADMIN123@ORCL11G
+```
+
+数据库用户名：STONE
+
+数据库口令：ADMIN123
+
+@符号只是了网络连接所需的用户进程
+
+1. 连接到本地实例：唯一不需要数据库侦听器的连接类型
+
+```bash
+set ORACLE_SID=ORCL11G
+sqlplus system/oracle
+
+set ORACLE_SID=ORCL11G
+sqlplus / as sysdba
+```
+
+2. 名称解析
+3. 启动服务器进程
+
+在TCP环境中，一个侦听器所启动的每一个专用服务器都会获得一个唯一的TCP端口号。操作系统的端口映射算法会在进程启动阶段指派端口号。侦听器将这个端口号传回用户进程，用户进程随后就可以与其服务器进程直接通信。
+
+##### 4.1.4 创建侦听器
+
+三个管理Oracle Net 的图形管理工具
+
+- Enterprise Manager（Database Control 或 Grid Control）
+- Net Manager
+- Net Configuration Assistant
+
+##### 4.1.5 数据库注册
+
+通过“注册”过程，侦听器能够查找到所连接的实例。
+
+1. 静态注册
+2. 动态注册
+
+强制重新注册
+
+```sql
+SQL>alter system register;
+```
+
+如果侦听器在默认端口1521上运行，则将完全不需要配置动态注册。
+
+如果侦听器不在主机名标识的地址上的默认端口运行，则必须通过设置`local_listener`参数和重新注册来指定侦听器的位置
+
+```sql
+SQL>alter system set local_listener=list2;
+SQL>alter system register;
+
+# 硬编码方式
+SQL>alter system set 
+	local_listener='(address=(protocol=tcp)(host=127.0.0.1)(port=1522))';
+```
+
+##### 4.1.6 解析名称的技术
+
+oracle提供了四种名称解析方法
+
+| 名称         | 描述                                                         |
+| ------------ | ------------------------------------------------------------ |
+| easy connect | 只能使用TCP协议不能与Oracle Net 高级功能（负载均衡等）一起使用 |
+| 本地命名     | 通过tnsnames.ora文件解析完整的网络地址                       |
+| 目录命名     | oracle鼓励，需要在网络中安装和配置一个目录服务器             |
+| 外部命名     | 类似于目录命名，但使用第三方命名服务                         |
+
+##### 4.1.7 侦听器控制使用程序
+
+查看所有`lsnrctl`命令
+
+```bash
+lsnrctl help
+```
+
+- START 启动侦听器
+- STOP 停止侦听器
+- STATUS 查看侦听器的状态
+- SERVICES 查看侦听器提供的服务（给出的信息比STATUS更完整）
+- VERSION 参看侦听器的版本
+- RELOAD 强制侦听器在listener.ora中重读条目。
+- SAVE_CONFIG 将任何联机更改写入listener.ora文件
+- TRACE 启动对侦听器活动的跟踪
+- CHANGE_PASSWORD 设置用于管理侦听器的口令
+- QUIT 从工具退出，不保存对listener.ora文件的更改
+- EXIT 从工具退出，保存对listener.ora文件的更改
+- SET 设置各种选项，如跟踪和超时
+- SHOW 显示已为侦听器设置的选项
+
+##### 4.1.8 配置服务别名
+
+使用`Database Control`或`Net Manager`设置
+
+```bash
+# unix下启动Net Manager：
+oracle>netmgr
+```
+
+##### 4.1.9 文件名和TNSADMIN
+
+配置Oracle Net 时，将牵涉三个关键文件：
+
+- listerner.ora 
+- tnsnames.ora
+- sqlnet.ora
+
+##### 4.1.10 数据库链接
+
+针对一个数据库的用户会话执行针对另一个数据库的SQL语句
+
+例：
+
+```sql
+ # 一个生产数据库(由连接字符串PROD确定)包含模式STORE，它有两个表：ORDERS和customers。
+ # 还有一个开发数据库(由连接字符串DEV确定)，也包含模式STORE。
+ # 用户连接到名为TEST的第三个数据库，需要使用生产数据来更新开发模式。
+ 
+ # 定义生产数据库连接
+ create database link prodstore
+ connect to store identified by admin123 using 'prod'
+ 
+ # 定义开发数据库连接
+ create database link devstore
+ connect to store identified by devpasswd using 'dev'
+ 
+ # 更新开发模式，以便与生产模式相匹配
+ truncate table orders@devstore;
+ truncate table customers@devstore;
+ insert into orders@devstore select * from orders@prodstore;
+ insert into customers@devstore select * from customers@prodstore;
+ 
+ # 检查自上次刷新开发以来是否在生产系统中插入了任何行，如果有将它们插入到开发中：
+ insert into orders@devstore
+ (select * from orders@prodstore minus select * from orders@devstore);
+ 
+```
+
+#### 4.2 使用 Oracle 共享服务器体系结构
+
+“共享服务器体系结构（shared server architecture）”在早期版本中称为“多线程服务器（multithreaded server, MTS）”
+
+##### 4.2.1 专用服务器体系结构的局限性
+
+并行和内存问题。
+
+一般更简单的操作系统如windows和unix更可能遇到。
+
+##### 4.2.2 共享服务器体系结构
+
+完全在服务器端实现
+
+存在两种新的进程类型：调度进程与共享服务器进程
+
+会话和调度进程的连接在会话期间持久存在，而与侦听器的连接是短暂的。
+
+### 第五章 Oracle存储结构
+
+#### 5.1 了解表空间和数据文件
+
+逻辑上，数据存储在段中。
+
+物理上，数据存储在数据文件（datafile）中。
+
+表空间（tablespace）实体是二者的抽象
+
+##### 5.1.1 Oracle 数据存储结构
+
+![WeChataf02f55376d268242da0458ac13b961d](assets/WeChataf02f55376d268242da0458ac13b961d.png)
+
+虚线表示对多对关系，这种关系不应存在。表空间实体消除了这种多对多关系。
+
+- oracle块是数据库的基本I/O单元。默认大小8KB，在2KB~32KB之间，windows和liunx上2KB-16KB，其他操作系统上可以达到32KB。`DB_BLOCK_SIZE`
+- 操作系统块是文件系统的I/O单元。通常使用默认设置（NTFS是512B，ext3是1KB），可以配置（512B-64KB之间）。
+- 避免操作系统块大小超过Oracle块
+
+##### 5.1.2 段、区间、块和行
+
+数据存储在段中，数据字典视图`DBA_SEGMENTS`描述数据库中的每一个段
 
 
+
+```sql
+SQL> select segment_type, count(1) from dba_segments group by segment_type 2  order by segment_type;
+SEGMENT_TYPE	COUNT(1)
+---------------	--------
+CLUSTER	10
+INDEX	3185
+INDEX PARTITON	324
+...
+
+```
+
+##### 5.1.3 文件存储技术
+
+数据文件可以保存在四类设备上：
+
+- 本地文件系统
+- 群集文件系统：RAC实现方法
+- 原始设备：历史留下的异常事物
+- ASM设备：文件系统替代品
+
+ASM：
+
+- Oracle提供的逻辑卷管理器
+- 逻辑卷具有**数据条带化（striping）**和**镜像（mirroring）**特性
+
+#### 5.2 创建和管理表空间
+
+创建数据库时，已创建的表空间：
+
+- SYSTEM
+- SYSAUX
+- 临时表空间
+- 撤销表空间
+
+##### 5.2.1 创建表空间
+
+
+
+- 使用 Enterprise Manager Database Control
+
+  - 在数据库主页选中 server选项卡-选中Storage部分总的Tablespaces链接
+  - 单机Create按钮创建表空间
+
+- 使用SQL*PLUS
+
+  - 查询数据字典视图 `DBA_TABLESPACES`、`DBA_DATA_FILES`、`DBA_SEGMENTS`和`DB_FREE_SPACE`
+
+  - 创建
+
+  - ```sql
+    create tablespace 表空间名 datafile '对应的文件名' size 大小;	
+    　# 举例如下：
+    create tablespace wbppcs datafile 'D:\oracle\oradata\orcl\wbppcs.dbf' size 3000m;
+    　# 3000m指的是3000MB
+    ```
+
+##### 5.2.2 更改表空间
+
+创建后对表空间的常见更改：
+
+- 重命名
+
+  - ```sql
+    ALTER TABLESPACE tablespaceoldname RANAME TO tablespacenowname;
+    
+    ALTER TABLESPACE tablespacenowname OFFLINE;
+    
+    HOST RENAME 'D:\oracle\oradata\orcl\tablespaceoldname.dbf';
+    
+    ALTER DATABASE 'D:\oracle\oradata\orcl\tablespaceoldname.dbf' TO 'D:\oracle\oradata\orcl\tablespacenowname.dbf';
+    
+    ALTER TABLESPACE tablespacenowname ONLINE;
+    
+    ```
+
+  - 重命名表空间（联机）后，需要重命名数据文件（脱机）
+
+- 使其联机或脱机
+
+  - ```sql
+    ALTER TABLESPACE tablename OFFLINE [ NORMAL | IMMEDIATE | TEMPORARY ]
+    ```
+
+  - NORMAL: (默认方式)将强制实施针对所有表空间数据文件的检查点。此后表空间和数据文件将处于脱机状态。
+
+  - IMMEDIATE：立即使表空间和数据文件脱机，不会转储任何藏缓冲区。数据文件将受到损坏，表空间联机前必须应用来自重做日志的变更向量。
+
+  - TEMPORARY：针对所有可以执行检查点操作的所有文件实施检查点，然后按顺序使表空间和文件脱机。
+
+- 标记为读写或只读
+
+  - ```sql
+    ALTER TABLESPACE tablespacename [READ ONLY | READ WRITE]
+    ```
+
+- 重调大小
+
+```sql
+# 调整大小
+ALTER DATABASE DATAFILE filename RESIZE n[M|G|T]
+# M G T 指文件大小的单位：MB、GB、TB
+alter database datafile '/oradata/users02.dbf' resize 10m;
+# 只有文件系统上的空间足够大，向上重调大小才能成功；
+# 只有文件中的空间尚未由分配给段的区间使用时，才能向下重调大小；
+
+# 添加文件
+alter tablespace storedata add datafile 'C:\ORACLE\ORADATA\ORCL11G\STOREDATA_03.DBF' size 50m;
+# 添加自动扩展语句
+alter tablespace storedata add datafile 'C:\ORACLE\ORADATA\ORCL11G\STOREDATA_03.DBF' autoextend on next 50m maxsize 2g;
+
+
+```
+
+
+
+- 更改警报阈值
+  - 通过  Database Control-Alerts 查看更改
+
+##### 5.2.3 删除表空间
+
+```sql
+DROP TABLESPACE tablespacename [ INCLUDING CONTENTS [ AND DATAFILES]];
+```
+
+- 未指定 INCLUDING CONTENTS 关键字，但表空间包含任何对象，删除将失败。
+- 未指定 AND DATAFILES 关键字，将删除表空间及其内容，但数据文件仍保存在磁盘上。
+
+##### 5.2.4 OMF
+
+- Oracle管理的文件（Oracle-Managed Files，OMF）
+
+- 需设置的参数
+
+- ```
+  DB_CREATE_FILE_DEST
+  DB_CREATE_ONLINE_LOG_DEST_1
+  DB_CREATE_ONLINE_LOG_DEST_2
+  DB_CREATE_ONLINE_LOG_DEST_3
+  DB_CREATE_ONLINE_LOG_DEST_4
+  DB_CREATE_ONLINE_LOG_DEST_5
+  DB_RECOVERY_FILE_DEST
+  ```
+
+#### 5.3 管理表空间中的空间
+
+空间管理的多个级别
+
+- 将空间分配给表空间
+- 将表空间中的空间分配给段
+- 将段中的空间分配给行
+
+##### 5.3.1 区间管理
+
+两种模式：
+
+- 字典管理（避免）
+- 本地管理
+
+```sql
+# 将字典管理的表空间转换为本地管理
+excute dbms_space_admin.tablespace_migragte_to_local('tablespacename');	
+```
+
+##### 5.3.2 管理段空间
+
+- 手动
+
+- 自动（始终应使用）
+
+- ```sql
+  # 查看是否在使用手动管理
+  select tablespace_name, segment_space_management from dba_tablespaces;
+  ```
+
+- 无法将表空间从手动段空间管理转换为自动段空间管理。只能创建新表空间。
+
+
+
+## 第二部分 SQL
+
+### 第七章 DDL和模式对象
+
+```sql
+# 创建表
+CREATE TABLE SCOTT.EMP
+(EMPNO NUMBER(4),
+ENAME VARCHAR(2),
+HIREDATE DATE DEFAULT TRUNC(SYSDATE),
+SAL NUMBER(7,2),
+COMM NUMBER(7,2) DEFAULT 0.03);
+
+# 添加列
+alter table emp add (job_id number);
+
+# 修改列
+alter table emp modify (commission_pct number(4, 2) default 0.05);
+
+# 删除列
+alter table emp drop colucommission_pctn;
+
+# 将列标记为未使用
+alter table emp set unused column jab_id;
+alter table tablename drop unused columns;
+
+# 重命名列
+alter table emp rename column hire_date tp recruited;
+
+# 将表标记为只读
+alter table emp read only;
+
+
+# 删除
+drop table [schema.]tablename ;
+
+# 创建临时表
+create global temporary table temp_tab_name
+(column datatype [, column datatype])
+[on commit {delete | preserve} rows];
+
+
+# 创建索引
+# 创建主约束和唯一约束时将隐式创建索引
+create [unique | bitmap] index [ shema.]indexname on [ shema.]tablename (column [, column...]);
+create index emp_i2 on emp(surname, forename);
+
+# 删除索引
+drop index emp_i2;
+# 修改索引
+create index emp_i2 on emp(surname, forename, dob);
+
+# 视图
+create [or replace] [force | noforce] view 
+[schema.]viewname [(alias [,alias]...)] 
+as subquery 
+[with chech option [constraint constraintname]] 
+[with read only [constraint constraintname]];
+
+create view hr.emp_fin as select hire_date,job_id,salary,commission_pct,department_id from hr.employees;
+select * from emp_fin where department_id=50;
+
+# 调整视图的列，需要删除重新创建
+# 删除视图
+drop view [schema.]viewname;
+
+# 同义词
+# 创建同义词
+CREATE [PUBLIC] SYNONYM synonym FOR object;
+# 删除同义词
+DROP [PUBLIC] SYNONYM synonym;
+# 显式编译
+ALTER SYNONYM synonym COMPILE;
+
+select * from hr.employees@prod;
+create public synonym emp for hr.employees@prod;
+select * from emp;
+
+# ----------------------序列-------------------------
+# 创建序列
+CREATE SEQUENCE [schema.]sequencename 
+[INCREMENT BY number]
+[START WITH number]
+[MAXVALUE number | NOMAXVALUE]
+[MINVALUE number | NOMAXVALUE]
+[CYCLE | NOCYCLE]
+[CACHE number | NOCACHE]
+[ORDER | NOORDER] ;
+
+# 使用 nextval 获取下一值 currval 获取‘当前’值
+create sequence order_seq start with 10;
+create sequence line_seq start with 10;
+insert into orders (order_id,order_date,customer_id)
+values (order_seq.nextval, sysdate,'1000');
+insert into order_items(order_id, order_item, product_id)
+values (order_seq.currval, line_seq.nextval, 'A111');
+insert into order_items(order_id, order_item, product_id)
+values (order_seq.currval, line_seq.nextval, 'B111');
+commit;
+
+# 修改序列
+ALTER SEQUENCE sequencename 
+[INCREMENT BY number]
+[START WITH number]
+[MAXVALUE number | NOMAXVALUE]
+[MINVALUE number | NOMAXVALUE]
+[CYCLE | NOCYCLE]
+[CACHE number | NOCACHE]
+[ORDER | NOORDER] ;
+
+# 删除序列
+drop sequence order_seq;
+```
+
+##### 7.6.1 约束
+
+- unique: 每行值不同，但可以是null
+- not null
+- primary key：主键，唯一且不为空，一个表只有一个
+- foreign key：使子表中的列对应父表中的主键列，最好定义为not null
+- check：用来实施简单规则
